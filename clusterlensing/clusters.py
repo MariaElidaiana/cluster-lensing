@@ -178,7 +178,7 @@ class ClusterEnsemble(object):
         choices are 'Prada' and 'Duffy'.
     """
     def __init__(self, redshifts, cosmology=astropy.cosmology.Planck13,
-                 cm='DuttonMaccio'):
+                 cm='DuttonMaccio', cmval=np.array([4.0])): #add cmval
         if type(redshifts) != np.ndarray:
             redshifts = np.array(redshifts)
         if redshifts.ndim != 1:
@@ -186,18 +186,22 @@ class ClusterEnsemble(object):
         if np.sum(redshifts < 0.) > 0:
             raise ValueError("Redshifts cannot be negative.")
 
+        if type(cmval) != np.ndarray:
+            cmval = np.array([cmval])
+
         if hasattr(cosmology, 'h') and hasattr(cosmology, 'Om0'):
             self._cosmo = cosmology
         else:
             raise TypeError("Input cosmology must be an instance of \
                              astropy.cosmology")
-
         if cm == 'DuttonMaccio':
             self._cm = 'DuttonMaccio'
         elif cm == 'Prada':
             self._cm = 'Prada'
         elif cm == 'Duffy':
             self._cm = 'Duffy'
+        elif cm =='Diemer18': #external input
+            self._cm = 'Diemer18'
         else:
             raise ValueError('Input concentration-mass relation must be \
                               one of: DuttonMaccio, Prada, Duffy.')
@@ -216,6 +220,7 @@ class ClusterEnsemble(object):
         self._rs = None
         self._c200 = None
         self._deltac = None
+        self._cmval = cmval
 
     @property
     def n200(self):
@@ -485,6 +490,11 @@ class ClusterEnsemble(object):
                                       Om_L=1 - self._cosmo.Om0)
         elif self._cm == 'Duffy':
             self._c200 = cofm.c_Duffy(self._z, self._m200, h=self._cosmo.h)
+        
+        elif self._cm == 'Diemer18': #add diemer18 value
+            self._c200 = self._cmval 
+            if np.shape(self._c200)==(1,1):
+                self._c200 = np.reshape(self._c200, (1,))   
 
         self._df['c200'] = pd.Series(self._c200, index=self._df.index)
         self._calculate_deltac()
